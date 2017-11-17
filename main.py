@@ -51,63 +51,15 @@ def login(session, agent, infoDic):
 def composeURL(tid, page):
     return 'https://ck101.com/thread-{}-{}-1.html'.format(tid, page)
 
-def leaderStr():
-    leader = """
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="formhash"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="posttime"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="delattachop"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="wysiwyg"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="fid"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="tid"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="pid"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="page"
-
-    {}
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="typeid"
-
-    3115
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="subject"
-
-    測試
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="checkbox"
-
-    0
-    ------WebKitFormBoundaryIvQoJyA7syjz1oMt
-    Content-Disposition: form-data; name="message"
-    """
-
 def getValue(data, name):
     return data.find('input', attrs={'name': name})['value']
 
-def modify(session, agent, url, old, new):
+def modify(session, agent, url, shot):
     rawdata = session.get(url, headers=agent)
     data = bs(rawdata.text, 'lxml')
-    content = data.find('textarea').text.replace(old, new)
+    content = data.find('textarea').text
+    for strs in shot:
+        content = content.replace(strs[0], strs[1])
 
     hashid = getValue(data, 'formhash')
     posttime = getValue(data, 'posttime')
@@ -121,24 +73,24 @@ def modify(session, agent, url, old, new):
     # checkbox, message
     editurl = 'https://ck101.com/forum.php?mod=post&action=edit&extra=&editsubmit=yes'
 
+
     print('d')
 
-def findTarget(session, agent, url, old, new):
+def findTarget(session, agent, url, strdb):
     pagedata = session.get(url, headers=agent)
-    if old not in pagedata.text:
-        return
-
     data = bs(pagedata.text, 'lxml')
+
     for article in data.find_all('div', class_='plhin'):
         content = article.find('td', class_='t_f')
-        if old not in content.text:
-            continue
+        shot = []
+        for target in strdb:
+            if target[0] in content.text:
+                shot.append(target)
 
-        # pid = content['id'][12::]
-        editUrl = 'https://ck101.com/' + article.find('a', attrs={'class':'operateBtn editp'})['href']
-        modify(session, agent, editUrl, old, new)
-        print('d')
-    print('d')
+        if len(shot) > 0:
+            editUrl = 'https://ck101.com/' + article.find('a', attrs={'class': 'operateBtn editp'})['href']
+            modify(session, agent, editUrl, shot)
+
 
 def start(infoDic):
     # Start a session so we can have persistant cookies
@@ -153,15 +105,17 @@ def start(infoDic):
     p1, p2 = infoDic['limit']
     for i in range(p1, p2+1):
         url = composeURL(infoDic['tid'], 16)
-        findTarget(session, agent, url, infoDic['old'], infoDic['new'])
+        findTarget(session, agent, url, infoDic['strdb'])
     print('d')
 
 
 if __name__ == '__main__':
+    with open('data.txt', 'r') as f:
+        strdb = [n[:-1:].split(' ') for n in f.readlines()]
+
     infoDic = {
         'tid': '4226739',
-        'old': '鄭咤',
-        'new': '王小名',
+        'strdb': strdb,
         'idStr': '',
         'pwStr': '',
         'limit': (1, 1)
