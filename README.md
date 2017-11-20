@@ -1,6 +1,6 @@
 # CKStrReplace    
 
-下載：[windows](https://github.com/xxi511/CKStrReplace/releases/download/0.0.1/CKStrReplace_windows.exe), [ubuntu](https://github.com/xxi511/CKStrReplace/releases/download/0.0.1/CKStrReplace_ubuntu)
+下載：[windows](https://github.com/xxi511/CKStrReplace/releases/download/0.0.1/CKStrReplace_windows.exe), [ubuntu](https://github.com/xxi511/CKStrReplace/releases/download/0.0.1/CKStrReplace_ubuntu.zip)
 
 這東西的作用基本上和[文字校正](https://github.com/xxi511/textCorrection/tree/python)類似，一樣是讀`data.txt`的資料          
 差別在於它可以整本書去更改          
