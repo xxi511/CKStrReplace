@@ -83,7 +83,7 @@ class FrameUI(Frame):
         if account is '' or password is '' or not tid or p1 is -1 or p2 is -1:
             return False, {}
         else:
-            with open('data.txt', 'r') as f:
+            with open('data.txt', 'r', encoding='utf8') as f:
                 strdb = [n[:-1].split('->') for n in f.readlines()]
 
             infoDic = {
