@@ -1,124 +1,130 @@
 import requests
-import hashlib
-from bs4 import BeautifulSoup as bs
-import re
-
-def pwhash(origin):
-    # password hash
-    md5 = hashlib.md5()
-    md5.update(origin.encode('utf-8'))
-    return md5.hexdigest()
-
-def checkurl(self):
-    # https://ck101.com/thread-3885080-1-1.html
-    # https://ck101.com/forum.php?mod=viewthread&tid=3434923&page=13
-    # https://ck101.com/forum.php?mod=viewthread&tid=3434923&page=13&extra=#pid99055328
-    urlStr = self.urlEntry.get()
-    if urlStr.startswith('https://ck101.com/thread'):
-        tid = urlStr.split('-')[1]
-    elif urlStr.startswith('https://ck101.com/forum.php?'):
-        tid = urlStr.split('&')[1][4:]
-    else:
-        tid = None
-
-    return tid if tid else None
-
-def login(session, agent, infoDic):
-    '''
-    CK login
-    :param session: session
-    :param agent: user agent
-    :param infoDic: user info dic
-    :return: tuple, (success, errMsg)
-    '''
-    hashedPW = pwhash(infoDic['pwStr'])
-    login_data = {
-        'username': infoDic['idStr'],
-        'password': hashedPW,
-        'quickforward': 'yes',
-        'handlekey': 'ls'
-    }
-
-    loginUrl = 'https://ck101.com/member.php?mod=logging&action=login&loginsubmit=yes&infloat=yes&lssubmit=yes&inajax=1'
-    login = session.post(loginUrl, data=login_data, headers=agent)
-    resp = login.text
-    if '歡迎您回來' in resp:
-        return True, ''
-    else:
-        find = re.findall("CDATA\[.*<script type=", resp, re.U)[0]
-        return False, find[6:-13]
-
-def composeURL(tid, page):
-    return 'https://ck101.com/thread-{}-{}-1.html'.format(tid, page)
-
-def getValue(data, name):
-    return data.find('input', attrs={'name': name})['value']
-
-def modify(session, agent, url, shot):
-    rawdata = session.get(url, headers=agent)
-    data = bs(rawdata.text, 'lxml')
-    content = data.find('textarea').text
-    for strs in shot:
-        content = content.replace(strs[0], strs[1])
-
-    hashid = getValue(data, 'formhash')
-    posttime = getValue(data, 'posttime')
-    delattachop = getValue(data, 'delattachop')
-    wysiwyg = getValue(data, 'wysiwyg')
-    fid = getValue(data, 'fid')
-    tid = getValue(data, 'tid')
-    pid = getValue(data, 'pid')
-    page = getValue(data, 'page')
-    subject = getValue(data, 'subject')
-    # checkbox, message
-    editurl = 'https://ck101.com/forum.php?mod=post&action=edit&extra=&editsubmit=yes'
+from tkinter import messagebox, Tk
+from tkinter.ttk import Label, Button, Entry, Progressbar, Frame
+import tkinter.font as tkFont
+from util import *
 
 
-    print('d')
+class FrameUI(Frame):
+    def __init__(self, parent):
+        Frame.__init__(self, parent)
+        self.pack()
+        self.parent = parent
+        self.parent.title('CKStrReplace')
+        st = tkFont.Font(family='song ti', size=12)
 
-def findTarget(session, agent, url, strdb):
-    pagedata = session.get(url, headers=agent)
-    data = bs(pagedata.text, 'lxml')
+        self.set_account_frame(st)
+        self.set_url_frame(st)
+        self.set_page_frame(st)
+        self.bar = Progressbar(self, orient="horizontal",
+                               mode="determinate")
+        self.bar.pack(fill='x')
 
-    for article in data.find_all('div', class_='plhin'):
-        content = article.find('td', class_='t_f')
-        shot = []
-        for target in strdb:
-            if target[0] in content.text:
-                shot.append(target)
+    def set_account_frame(self, st):
+        account_frame = Frame(self)
+        account_frame.pack(fill='x', expand=1, pady=5)
 
-        if len(shot) > 0:
-            editUrl = 'https://ck101.com/' + article.find('a', attrs={'class': 'operateBtn editp'})['href']
-            modify(session, agent, editUrl, shot)
+        id_label = Label(account_frame, text='帳號：', font=st)
+        id_label.pack(side='left')
+        self.id_entry = Entry(account_frame)
+        self.id_entry.pack(side='left')
 
+        pw_label = Label(account_frame, text='密碼：', font=st)
+        pw_label.pack(padx=5, side='left')
+        self.pw_entry = Entry(account_frame, show='*')
+        self.pw_entry.pack(side='left')
 
-def start(infoDic):
-    # Start a session so we can have persistant cookies
-    session = requests.session()
-    agent = {'user-agent': 'Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11'}
+    def set_url_frame(self, st):
+        url_frame = Frame(self)
+        url_frame.pack(fill='x', expand=1, pady=5)
 
-    success, errMsg = login(session, agent, infoDic)
-    if not success:
-        print(errMsg)
-        return
+        url_label = Label(url_frame, text='網址：', font=st)
+        url_label.pack(side='left')
+        self.url_entry = Entry(url_frame)
+        self.url_entry.pack(side='left', fill='x', expand=1)
 
-    p1, p2 = infoDic['limit']
-    for i in range(p1, p2+1):
-        url = composeURL(infoDic['tid'], 16)
-        findTarget(session, agent, url, infoDic['strdb'])
-    print('d')
+    def set_page_frame(self, st):
+        page_frame = Frame(self)
+        page_frame.pack(fill='x', expand=1, pady=5)
+
+        title_label = Label(page_frame, text='頁數：', font=st)
+        title_label.pack(side='left')
+        self.p1_entry = Entry(page_frame, width=8)
+        self.p1_entry.pack(side='left')
+        range_label = Label(page_frame, text='~', font=st)
+        range_label.pack(side='left')
+        self.p2_entry = Entry(page_frame, width=8)
+        self.p2_entry.pack(side='left')
+
+        self.send = Button(page_frame, text='send', command=self.click_send)
+        self.send.pack(side='right')
+
+    def click_send(self):
+        success, infoDic = self.checkdata()
+        if not success:
+            messagebox.showerror('錯誤', '請檢查各欄位是否填寫正確')
+            return
+
+        self.send.config(state="disabled")
+        self.start(infoDic)
+
+    def checkdata(self):
+        # p1, p2不防呆
+        account = self.id_entry.get().strip()
+        password = self.pw_entry.get().strip()
+        url = self.url_entry.get().strip()
+        tid = checkurl(url)
+        p1 = str2int(self.p1_entry.get().strip())
+        p2 = str2int(self.p2_entry.get().strip())
+
+        if account is '' or password is '' or not tid or p1 is -1 or p2 is -1:
+            return False, {}
+        else:
+            with open('data.txt', 'r') as f:
+                strdb = [n[:-1].split('->') for n in f.readlines()]
+
+            infoDic = {
+                'tid': tid,
+                'strdb': strdb,
+                'idStr': account,
+                'pwStr': password,
+                'limit': (p1, p2)
+            }
+            return True, infoDic
+
+    def start(self, infoDic):
+        # Start a session so we can have persistant cookies
+        session = requests.session()
+        agent = {'user-agent': 'Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11'}
+
+        success, errMsg = login(session, agent, infoDic)
+        if not success:
+            messagebox.showerror('登入失敗', errMsg)
+            self.send.config(state="active")
+            return
+
+        with open('失敗清單', 'w') as f:
+            f.write('')
+
+        p1, p2 = infoDic['limit']
+        self.bar['value'] = 0
+        self.bar['maximum'] = p2 - p1 + 1
+
+        # 怕高頻率的修改CK會ban，就不做平行迴圈了
+        for i in range(p1, p2 + 1):
+            url = composeURL(infoDic['tid'], i)
+            editable = findTarget(session, agent, url, infoDic['strdb'])
+            if editable:
+                self.bar['value'] = i - p1 + 1
+                self.update()
+            else:
+                messagebox.showerror('錯誤', '你似乎沒有修改權限喔')
+                break
 
 
 if __name__ == '__main__':
-    with open('data.txt', 'r') as f:
-        strdb = [n[:-1:].split(' ') for n in f.readlines()]
-
-    infoDic = {
-        'tid': '4226739',
-        'strdb': strdb,
-        'idStr': '',
-        'pwStr': '',
-        'limit': (1, 1)
-    }
-
-    start(infoDic)
+    root = Tk()
+    root.resizable(0, 0)
+    root.geometry("450x130")  # wxh
+    app = FrameUI(root)
+    app.mainloop()
