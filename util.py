@@ -81,14 +81,16 @@ def modify(session, agent, url, shot):
     subject = getValue(data, 'subject')
     editurl = 'https://ck101.com/forum.php?mod=post&action=edit&extra=&editsubmit=yes'
     typeid = ''
+
     select = data.find('select', attrs={'name': 'typeid'})
-    for option in select.find_all('option'):
-        try:
-            _ = option['selected']
-            typeid = option['value']
-            break
-        except KeyError:
-            continue
+    if select:
+        for option in select.find_all('option'):
+            try:
+                _ = option['selected']
+                typeid = option['value']
+                break
+            except KeyError:
+                continue
 
     body = {
         'formhash': hashid,
@@ -114,7 +116,7 @@ def modify(session, agent, url, shot):
 
     edit = session.post(editurl, data=body, headers=agent)
     if '帖子編輯成功' not in edit.text:
-        with open('失敗清單', 'a') as f:
+        with open('failure.txt', 'a') as f:
             f.write('https://ck101.com/forum.php?mod=viewthread&tid={}&page={}#pid{}\n'.format(tid, page, pid))
 
 
@@ -133,6 +135,7 @@ def findTarget(session, agent, url, strdb):
             try:
                 editUrl = 'https://ck101.com/' + article.find('a', attrs={'class': 'operateBtn editp'})['href']
                 modify(session, agent, editUrl, shot)
-                return True
             except TypeError:
                 return False
+
+    return True

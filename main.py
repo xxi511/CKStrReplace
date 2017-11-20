@@ -19,6 +19,8 @@ class FrameUI(Frame):
         self.bar = Progressbar(self, orient="horizontal",
                                mode="determinate")
         self.bar.pack(fill='x')
+        self.progress_label = Label(self, text='', anchor='center', font=st)
+        self.progress_label.pack(fill='x')
 
     def set_account_frame(self, st):
         account_frame = Frame(self)
@@ -103,28 +105,41 @@ class FrameUI(Frame):
             self.send.config(state="active")
             return
 
-        with open('失敗清單', 'w') as f:
+        with open('failure.txt', 'w') as f:
             f.write('')
 
         p1, p2 = infoDic['limit']
+        self.progress_label['text'] = ''
+        maximum = p2 - p1 + 1
         self.bar['value'] = 0
-        self.bar['maximum'] = p2 - p1 + 1
+        self.bar['maximum'] = maximum
 
         # 怕高頻率的修改CK會ban，就不做平行迴圈了
+        showdone = True
         for i in range(p1, p2 + 1):
             url = composeURL(infoDic['tid'], i)
             editable = findTarget(session, agent, url, infoDic['strdb'])
             if editable:
-                self.bar['value'] = i - p1 + 1
+                now = i - p1 + 1
+                self.progress_label['text'] = '{}/{}'.format(now, maximum)
+                self.bar['value'] = now
                 self.update()
             else:
                 messagebox.showerror('錯誤', '你似乎沒有修改權限喔')
+                showdone = False
                 break
+
+        # all done
+        self.send.config(state="active")
+        self.bar['value'] = 0
+        self.update()
+        if showdone:
+            messagebox.showinfo(message='修改完成')
 
 
 if __name__ == '__main__':
     root = Tk()
     root.resizable(0, 0)
-    root.geometry("450x130")  # wxh
+    root.geometry("440x140")  # wxh
     app = FrameUI(root)
     app.mainloop()
